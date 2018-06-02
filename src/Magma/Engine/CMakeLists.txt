@@ -11,6 +11,9 @@ add_library(Magma-Engine ${Magma_Engine_Source})
 set_target_properties (Magma-Engine PROPERTIES FOLDER Magma)
 
 include_directories(../../)
-target_link_libraries(Magma-Engine Magma-Core)
-target_link_libraries(Magma-Engine Magma-Math)
+include_directories(../../../extern/glm/)
 
+target_link_libraries(Magma-Engine Magma-Debug)
+target_link_libraries(Magma-Engine Magma-Core)
+target_link_libraries(Magma-Engine Magma-Graphics)
+target_link_libraries(Magma-Engine Magma-Input)
