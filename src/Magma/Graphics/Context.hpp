@@ -106,6 +106,20 @@ namespace Magma
 		};
 
 		/// <summary>
+		///		Texture wrap modes
+		/// </summary>
+		enum class WrapMode
+		{
+			Invalid = -1,
+
+			ClampToEdge,
+			MirroredRepeat,
+			Repeat,
+
+			Count
+		};
+
+		/// <summary>
 		///		Buffer bits
 		/// </summary>
 		enum class BufferBit
@@ -217,6 +231,24 @@ namespace Magma
 			/// <param name="size">Vertex buffer data size</param>
 			/// <returns>Vertex buffer object ID</returns>
 			virtual int CreateStaticVertexBuffer(int vao, void* data, size_t size) = 0;
+
+			/// <summary>
+			///		Creates a dynamic vertex buffer
+			/// </summary>
+			/// <param name="vao">Vertex array object ID where the buffer will be attached</param>
+			/// <param name="data">Vertex buffer data</param>
+			/// <param name="size">Vertex buffer data size</param>
+			/// <returns>Vertex buffer object ID</returns>
+			virtual int CreateDynamicVertexBuffer(int vao, void* data, size_t size) = 0;
+
+			/// <summary>
+			///		Sets a dynamic vertex buffer data
+			/// </summary>
+			/// <param name="vao">Vertex array object ID where the buffer is attached</param>
+			/// <param name="vbo">Vertex buffer object</param>
+			/// <param name="data">New vertex buffer data</param>
+			/// <param name="size">New vertex buffer data size</param>
+			virtual void SetDynamicVertexBufferData(int vao, int vbo, void* data, size_t size) = 0;
 
 			/// <summary>
 			///		Creates an empty vertex array
@@ -480,6 +512,12 @@ namespace Magma
 			virtual int CreateTexture2D() = 0;
 
 			/// <summary>
+			///		Destroys a 2D texture
+			/// </summary>
+			/// <param name="texture">Texture ID</param>
+			virtual void DestroyTexture2D(int texture) = 0;
+
+			/// <summary>
 			///		Activates a 2D texture on a certain slot
 			/// </summary>
 			/// <param name="texture">Texture ID</param>
@@ -518,10 +556,28 @@ namespace Magma
 			virtual void SetTextureMagFilter(Filter filter) = 0;
 
 			/// <summary>
+			///		Sets the wrap mode for texture coordinate S used by the current active texture
+			/// </summary>
+			/// <param name="mode">Wrap mode to be used</param>
+			virtual void SetTextureWrapSMode(WrapMode mode) = 0;
+
+			/// <summary>
+			///		Sets the wrap mode for texture coordinate T used by the current active texture
+			/// </summary>
+			/// <param name="mode">Wrap mode to be used</param>
+			virtual void SetTextureWrapTMode(WrapMode mode) = 0;
+
+			/// <summary>
 			///		Clears the viewport
 			/// </summary>
 			/// <param name="mask">Buffer bit mask</param>
 			virtual void Clear(BufferBit mask) = 0;
+
+			/// <summary>
+			///		Sets the texture unpack alignment
+			/// </summary>
+			/// <param name="alignment">Unpack alignment</param>
+			virtual void SetUnpackAlignment(int alignment) = 0;
 		};
 	}
 }

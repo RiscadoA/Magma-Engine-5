@@ -2,8 +2,12 @@
 
 #include "../Input/Window.hpp"
 #include "../Graphics/GLContext.hpp"
+#include "../Graphics/TerminalRenderer.hpp"
+#include "../Graphics/TextRenderer.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <fstream>
 
 using namespace Magma;
 
@@ -17,6 +21,28 @@ int main(int argc, char** argv)
 	window.OnClose.AddListener([&]() { running = false; });
 
 	Graphics::Context* context = new Graphics::GLContext();
+	//Graphics::TerminalRenderer* renderer = new Graphics::TerminalRenderer(*context);
+
+	/*window.OnKeyDown.AddListener([&](auto key, auto mods)
+	{
+		renderer->RenderOutput("test");
+	});
+
+	renderer->RenderInput("test");*/
+
+	Graphics::TextRenderer* consolasTextRenderer = new Graphics::TextRenderer(*context);
+	Graphics::TextRenderer* otherTextRenderer = new Graphics::TextRenderer(*context);
+	try
+	{
+		consolasTextRenderer->Load("../../../../resources/Consolas.ttf", 80);
+		otherTextRenderer->Load("../../../../resources/Pacific Again.ttf", 60);
+	}
+	catch (std::runtime_error& err)
+	{
+		fprintf(stderr, "Caught runtime error exception while trying to load font:\n%s", err.what());
+		getchar();
+		return -1;
+	}
 
 	auto program = context->CreateProgram();
 
@@ -62,60 +88,43 @@ int main(int argc, char** argv)
 		float data[] =
 		{
 			0.0f, 0.0f, 0.0f,
-			1.0f, 0.0f, 0.0f,
-			1.0f, 1.0f, 0.0f,
+			800.0f, 0.0f, 0.0f,
+			800.0f, 800.0f, 0.0f,
 		};
 
 		auto vbo = context->CreateStaticVertexBuffer(vao, data, sizeof(data));
 		context->SetVertexAttributePointer(vao, vbo, 0, 3, Graphics::AttributeType::Float, false, 0, nullptr);
 	}
 
-	// Create framebuffer
-	auto framebuffer = context->CreateFramebuffer();
-	context->BindFramebuffer(Graphics::FramebufferTarget::Both, framebuffer);
-
-	{
-		// Create color texture
-		auto color = context->CreateTexture2D();
-		context->ActivateTexture2D(color, 0);
-		context->TextureData2D(0, Graphics::PixelFormat::RGB, 1400, 800, Graphics::PixelFormat::RGB, Graphics::PixelType::UByte, nullptr);
-		context->SetTextureMinFilter(Graphics::Filter::Linear);
-		context->SetTextureMagFilter(Graphics::Filter::Linear);
-
-		Graphics::FramebufferAttachment attachments[] = { Graphics::FramebufferAttachment::Color0 };
-		context->SetDrawBuffers(1, attachments);
-		context->FramebufferTexture2D(Graphics::FramebufferTarget::Both, Graphics::FramebufferAttachment::Color0, color, 0);
-	}
-
-	context->BindFramebuffer(Graphics::FramebufferTarget::Both, 0);
-
 	while (running)
 	{
 		window.PollEvents();
 
-		// Set frame buffer
-		context->BindFramebuffer(Graphics::FramebufferTarget::Both, framebuffer);
-		context->SetViewport(0.0f, 0.0f, 1400.0f, 800.0f);
 		context->Clear(Graphics::BufferBit::Color);
 
-		// Get projection matrix
-		glm::mat4 ortho = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f);
+		glm::mat4 proj = glm::ortho(0.0f, 1400.0f, 0.0f, 800.0f);
+		
 
-		// Render triangle
 		context->ActivateProgram(program);
-		context->SetUniform4x4f(0, ortho);
+		context->SetUniform4x4f(0, proj);
 		context->DrawVertexArray(vao, Graphics::DrawMode::Triangles, 0, 3);
 		context->DeactivateProgram(program);
 
-		context->BindFramebuffer(Graphics::FramebufferTarget::Read, framebuffer);
-		context->BindFramebuffer(Graphics::FramebufferTarget::Draw, 0);
-		context->BlitFramebuffer(0, 0, 1400, 800, 0, 0, 200, 800, Graphics::BufferBit::Color, Graphics::Filter::Linear);
+		glm::mat4 transform = glm::mat4(1.0f);
+		transform *= proj;
+
+		consolasTextRenderer->Render("/test -f test.txt", glm::translate(proj, glm::vec3(0.0f, 400.0f, 0.0f)), glm::vec3(1.0f, 1.0f, 1.0f));
+
+		otherTextRenderer->Render("Sample Text", glm::translate(proj, glm::vec3(900.0f, 200.0f, 0.0f)), glm::vec3(0.0f, 1.0f, 1.0f));
 
 		window.SwapBuffers();
 	}
 
 	Init(engine);
 
+	delete consolasTextRenderer;
+	delete otherTextRenderer;
+	//delete renderer;
 	delete context;
 }
 

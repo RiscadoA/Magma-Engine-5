@@ -3,6 +3,21 @@
 #include <GL/glew.h>
 #include <sstream>
 
+void GLAPIENTRY
+MessageCallback(GLenum source,
+				GLenum type,
+				GLuint id,
+				GLenum severity,
+				GLsizei length,
+				const GLchar* message,
+				const void* userParam)
+{
+	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+		(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+			type, severity, message);
+}
+
+
 Magma::Graphics::GLContext::GLContext()
 {
 	// Init GLEW
@@ -18,6 +33,12 @@ Magma::Graphics::GLContext::GLContext()
 
 	m_nextID = 1;
 	m_activeProgram = 0;
+
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(MessageCallback, 0);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 Magma::Graphics::GLContext::~GLContext()
@@ -125,6 +146,24 @@ int Magma::Graphics::GLContext::CreateStaticVertexBuffer(int vao, void * data, s
 	glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
 	m_data[m_nextID] = vbo;
 	return m_nextID++;
+}
+
+int Magma::Graphics::GLContext::CreateDynamicVertexBuffer(int vao, void * data, size_t size)
+{
+	GLuint vbo;
+	glBindVertexArray(m_data.at(vao));
+	glCreateBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW);
+	m_data[m_nextID] = vbo;
+	return m_nextID++;
+}
+
+void Magma::Graphics::GLContext::SetDynamicVertexBufferData(int vao, int vbo, void * data, size_t size)
+{
+	glBindVertexArray(m_data.at(vao));
+	glBindBuffer(GL_ARRAY_BUFFER, m_data.at(vbo));
+	glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
 }
 
 int Magma::Graphics::GLContext::CreateVertexArray()
@@ -420,21 +459,32 @@ void Magma::Graphics::GLContext::BlitFramebuffer(int srcX0, int srcY0, int srcX1
 int Magma::Graphics::GLContext::CreateTexture2D()
 {
 	GLuint texture;
-	glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+	glGenTextures(1, &texture);
 	m_data[m_nextID] = texture;
+	auto err = glGetError();
 	return m_nextID++;
+}
+
+void Magma::Graphics::GLContext::DestroyTexture2D(int texture)
+{
+	glDeleteTextures(1, &m_data.at(texture));
+	m_data.erase(texture);
 }
 
 void Magma::Graphics::GLContext::ActivateTexture2D(int texture, int slot)
 {
+	auto err = glGetError();
 	glActiveTexture(GL_TEXTURE0 + slot);
 	glBindTexture(GL_TEXTURE_2D, m_data.at(texture));
+	err = glGetError();
 }
 
 void Magma::Graphics::GLContext::DeactivateTexture2D(int texture, int slot)
 {
+	auto err = glGetError();
 	glActiveTexture(GL_TEXTURE0 + slot);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	err = glGetError();
 }
 
 void Magma::Graphics::GLContext::TextureData2D(int level, PixelFormat internalFormat, size_t width, size_t height, PixelFormat format, PixelType type, void * data)
@@ -446,7 +496,7 @@ void Magma::Graphics::GLContext::TextureData2D(int level, PixelFormat internalFo
 
 	switch (internalFormat)
 	{
-		case PixelFormat::R: glInternalFormat = GL_R; break;
+		case PixelFormat::R: glInternalFormat = GL_RED; break;
 		case PixelFormat::RG: glInternalFormat = GL_RG; break;
 		case PixelFormat::RGB: glInternalFormat = GL_RGB; break;
 		case PixelFormat::BGR: glInternalFormat = GL_BGR; break;
@@ -458,7 +508,7 @@ void Magma::Graphics::GLContext::TextureData2D(int level, PixelFormat internalFo
 
 	switch (format)
 	{
-		case PixelFormat::R: glFormat = GL_R; break;
+		case PixelFormat::R: glFormat = GL_RED; break;
 		case PixelFormat::RG: glFormat = GL_RG; break;
 		case PixelFormat::RGB: glFormat = GL_RGB; break;
 		case PixelFormat::BGR: glFormat = GL_BGR; break;
@@ -480,7 +530,9 @@ void Magma::Graphics::GLContext::TextureData2D(int level, PixelFormat internalFo
 		default: throw std::runtime_error("Failed to set texture data: invalid pixel data type"); break;
 	}
 
+	auto err = glGetError();
 	glTexImage2D(GL_TEXTURE_2D, level, glInternalFormat, width, height, 0, glFormat, glType, data);
+	err = glGetError();
 }
 
 void Magma::Graphics::GLContext::SetTextureMinFilter(Filter filter)
@@ -496,7 +548,9 @@ void Magma::Graphics::GLContext::SetTextureMinFilter(Filter filter)
 		case Filter::LinearMipmapLinear: glFilter = GL_LINEAR_MIPMAP_LINEAR; break;
 		default: throw std::runtime_error("Failed to set texture min filter: invalid filter"); break;
 	}
-	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glFilter);
+	auto err = glGetError();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glFilter);
+	err = glGetError();
 }
 
 void Magma::Graphics::GLContext::SetTextureMagFilter(Filter filter)
@@ -512,7 +566,37 @@ void Magma::Graphics::GLContext::SetTextureMagFilter(Filter filter)
 		case Filter::LinearMipmapLinear: glFilter = GL_LINEAR_MIPMAP_LINEAR; break;
 		default: throw std::runtime_error("Failed to set texture mag filter: invalid filter"); break;
 	}
-	glTextureParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glFilter);
+	auto err = glGetError();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glFilter);
+	err = glGetError();
+}
+
+void Magma::Graphics::GLContext::SetTextureWrapSMode(WrapMode mode)
+{
+	GLenum glMode;
+	switch (mode)
+	{
+		case WrapMode::ClampToEdge: glMode = GL_CLAMP_TO_EDGE; break;
+		case WrapMode::MirroredRepeat: glMode = GL_MIRRORED_REPEAT; break;
+		case WrapMode::Repeat: glMode = GL_REPEAT; break;
+		default: throw std::runtime_error("Failed to set texture wrap S mode: invalid mode"); break;
+	}
+	auto err = glGetError();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glMode);
+	err = glGetError();
+}
+
+void Magma::Graphics::GLContext::SetTextureWrapTMode(WrapMode mode)
+{
+	GLenum glMode;
+	switch (mode)
+	{
+		case WrapMode::ClampToEdge: glMode = GL_CLAMP_TO_EDGE; break;
+		case WrapMode::MirroredRepeat: glMode = GL_MIRRORED_REPEAT; break;
+		case WrapMode::Repeat: glMode = GL_REPEAT; break;
+		default: throw std::runtime_error("Failed to set texture wrap T mode: invalid mode"); break;
+	}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glMode);
 }
 
 void Magma::Graphics::GLContext::Clear(BufferBit mask)
@@ -527,4 +611,9 @@ void Magma::Graphics::GLContext::Clear(BufferBit mask)
 		glMask |= GL_STENCIL_BUFFER_BIT;
 
 	glClear(glMask);
+}
+
+void Magma::Graphics::GLContext::SetUnpackAlignment(int alignment)
+{
+	glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
 }

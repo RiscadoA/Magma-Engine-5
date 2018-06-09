@@ -8,6 +8,9 @@ namespace Magma
 {
 	namespace Graphics
 	{
+		/// <summary>
+		///		OpenGL implementation of Context using GLEW
+		/// </summary>
 		class GLContext : public Context
 		{
 		public:
@@ -27,6 +30,8 @@ namespace Magma
 			virtual void DestroyProgram(int program) override;
 			virtual void DetachShader(int program, int shader) override;
 			virtual int CreateStaticVertexBuffer(int vao, void * data, size_t size) override;
+			virtual int CreateDynamicVertexBuffer(int vao, void* data, size_t size) override;
+			virtual void SetDynamicVertexBufferData(int vao, int vbo, void* data, size_t size) override;
 			virtual int CreateVertexArray() override;
 			virtual void SetVertexAttributePointer(int vao, int vbo, int index, int size, AttributeType type, bool normalized, size_t stride, const void * offset) override;
 			virtual void DestroyVertexBuffer(int vbo) override;
@@ -61,12 +66,16 @@ namespace Magma
 			virtual void SetDrawBuffers(size_t count, FramebufferAttachment * attachments) override;
 			virtual void BlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1, BufferBit mask, Filter filter) override;
 			virtual int CreateTexture2D() override;
+			virtual void DestroyTexture2D(int texture) override;
 			virtual void ActivateTexture2D(int texture, int slot) override;
 			virtual void DeactivateTexture2D(int texture, int slot) override;
 			virtual void TextureData2D(int level, PixelFormat internalFormat, size_t width, size_t height, PixelFormat format, PixelType type, void * data) override;
 			virtual void SetTextureMinFilter(Filter filter) override;
 			virtual void SetTextureMagFilter(Filter filter) override;
+			virtual void SetTextureWrapSMode(WrapMode mode) override;
+			virtual void SetTextureWrapTMode(WrapMode mode) override;
 			virtual void Clear(BufferBit mask) override;
+			virtual void SetUnpackAlignment(int alignment) override;
 
 			int m_activeProgram;	
 		};
